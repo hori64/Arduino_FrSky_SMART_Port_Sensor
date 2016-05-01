@@ -31,14 +31,25 @@ void setup()
 
 void loop()
 {
-  double alt;
+  static double alt,old_alt,vspeed;
+  static unsigned long alt_time;
   P = getPressure();
   alt = pressure.altitude(P,baseline);
+
+  /*
+   * Kiszámolja a vertikális sebességet.
+   * A mérés pontatlanságából adódó ugrálás kiküszöbölése céljából súlyozott átlagot használ.
+   * Egy ciklus csak tizednyit változtat. 
+   */
+  vspeed = (10*vspeed + ((alt-old_alt)/(millis()-alt_time))*1000)/11; // m/s
+  alt_time = millis();
+  old_alt = alt;
+  
   if (gps.location.isValid())
   {
     gpss.setData(gps.location.lat(), gps.location.lng(),                 // Latitude and longitude in degrees decimal (positive for N/E, negative for S/W)
                  gps.altitude.meters(),                                  // Altitude in m (can be negative)
-                 gps.speed.kmph(),                                       // Speed
+                 gps.speed.mps(),                                        // Speed m/s
                  gps.course.deg(),                                       // Course over ground in degrees (0-359, 0 = north)
                  gps.date.year()-2000, gps.date.month(), gps.date.day(), // Date (year - 2000, month, day)
                  gps.time.hour(), gps.time.minute(), gps.time.second()); // Time (hour, minute, second) - will be affected by timezone setings in your radio
@@ -53,7 +64,7 @@ void loop()
  // Set variometer data
   // (set Variometer source to VSpd in menu to use the vertical speed data from this sensor for variometer).
   vario.setData(alt,  // Altitude in meters (can be negative)
-                -1.5);  // Vertical speed in m/s (positive - up, negative - down)
+                vspeed);  // Vertical speed in m/s (positive - up, negative - down)
   smartDelay(100);
   if (digitalRead(5))digitalWrite(13,!digitalRead(13));
   else digitalWrite(13,HIGH);
